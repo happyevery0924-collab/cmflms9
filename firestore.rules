@@ -26,6 +26,7 @@ service cloud.firestore {
     //   - courseId: string (required)
     //   - employeeId: string (required, < 50 chars)
     //   - employeeName: string (required, < 100 chars)
+    //   - department: string (required, < 100 chars)
     //   - registrationDate: string (required, YYYY-MM-DD)
     //   - createdAt: timestamp (required)
     //
@@ -84,10 +85,11 @@ service cloud.firestore {
 
     function isValidRegistration() {
       let data = request.resource.data;
-      return hasRequiredFields(['courseId', 'employeeId', 'employeeName', 'registrationDate', 'createdAt']) &&
+      return hasRequiredFields(['courseId', 'employeeId', 'employeeName', 'department', 'registrationDate', 'createdAt']) &&
              validStringLength('courseId', 1, 100) &&
              validStringLength('employeeId', 1, 50) &&
              validStringLength('employeeName', 1, 100) &&
+             validStringLength('department', 1, 100) &&
              validStringLength('registrationDate', 10, 10) &&
              data.createdAt is timestamp;
     }

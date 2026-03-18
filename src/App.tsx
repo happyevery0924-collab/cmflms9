@@ -24,6 +24,7 @@ interface Registration {
   courseId: string;
   employeeId: string;
   employeeName: string;
+  department: string;
   registrationDate: string;
 }
 
@@ -68,6 +69,7 @@ const INITIAL_REGISTRATIONS: Registration[] = [
     courseId: '1',
     employeeId: 'EMP001',
     employeeName: '王小明',
+    department: '資訊部',
     registrationDate: '2026-03-16'
   }
 ];
@@ -152,6 +154,7 @@ export default function App() {
   // Form states for Registration
   const [regEmployeeId, setRegEmployeeId] = useState('');
   const [regEmployeeName, setRegEmployeeName] = useState('');
+  const [regDepartment, setRegDepartment] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
   const handleAddCourse = async (e: React.FormEvent) => {
@@ -192,7 +195,7 @@ export default function App() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourseId || !regEmployeeId || !regEmployeeName) {
+    if (!selectedCourseId || !regEmployeeId || !regEmployeeName || !regDepartment) {
       alert('請填寫完整報名資訊');
       return;
     }
@@ -201,11 +204,13 @@ export default function App() {
         courseId: selectedCourseId,
         employeeId: regEmployeeId,
         employeeName: regEmployeeName,
+        department: regDepartment,
         registrationDate: new Date().toISOString().split('T')[0],
         createdAt: serverTimestamp()
       });
       setRegEmployeeId('');
       setRegEmployeeName('');
+      setRegDepartment('');
       setSelectedCourseId('');
       alert('報名成功！');
     } catch (error) {
@@ -254,7 +259,7 @@ export default function App() {
             
             <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
               <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">快速報名</h3>
-              <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">選擇課程</label>
                   <select 
@@ -288,6 +293,17 @@ export default function App() {
                     value={regEmployeeName}
                     onChange={(e) => setRegEmployeeName(e.target.value)}
                     placeholder="例如: 王小明"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">部門名稱</label>
+                  <input 
+                    type="text" 
+                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
+                    value={regDepartment}
+                    onChange={(e) => setRegDepartment(e.target.value)}
+                    placeholder="例如: 資訊部"
                     required
                   />
                 </div>
@@ -373,6 +389,7 @@ export default function App() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">報名日期</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">課程名稱</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">部門名稱</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">工號</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">姓名</th>
                   </tr>
@@ -384,6 +401,7 @@ export default function App() {
                       <tr key={reg.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{reg.registrationDate}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course?.name || '未知課程'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reg.department || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reg.employeeId}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reg.employeeName}</td>
                       </tr>
@@ -391,7 +409,7 @@ export default function App() {
                   })}
                   {registrations.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">尚無報名紀錄</td>
+                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">尚無報名紀錄</td>
                     </tr>
                   )}
                 </tbody>
