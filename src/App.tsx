@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X } from 'lucide-react';
+import { io } from 'socket.io-client';
+
+const socket = io();
 
 type CourseCategory = '外部實體' | '外部線上' | '內部實體' | '內部數位學習平台';
 
@@ -83,9 +86,49 @@ const INITIAL_RECORDS: TrainingRecord[] = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('policy');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
-  const [registrations, setRegistrations] = useState<Registration[]>(INITIAL_REGISTRATIONS);
-  const [records, setRecords] = useState<TrainingRecord[]>(INITIAL_RECORDS);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [records, setRecords] = useState<TrainingRecord[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      setIsConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    socket.on('initialState', (data) => {
+      setCourses(data.courses);
+      setRegistrations(data.registrations);
+      setRecords(data.records);
+    });
+
+    socket.on('courseAdded', (course: Course) => {
+      setCourses((prev) => [...prev, course]);
+    });
+
+    socket.on('courseStatusToggled', (courseId: string) => {
+      setCourses((prev) => prev.map(c => 
+        c.id === courseId ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c
+      ));
+    });
+
+    socket.on('registrationAdded', (registration: Registration) => {
+      setRegistrations((prev) => [...prev, registration]);
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('initialState');
+      socket.off('courseAdded');
+      socket.off('courseStatusToggled');
+      socket.off('registrationAdded');
+    };
+  }, []);
 
   // Form states for Add Course
   const [newCourse, setNewCourse] = useState<Partial<Course>>({
@@ -112,13 +155,13 @@ export default function App() {
       description: newCourse.description || '',
       status: 'active'
     };
-    setCourses([...courses, course]);
+    socket.emit('addCourse', course);
     setNewCourse({ category: '內部實體', status: 'active' });
     alert('課程新增成功！');
   };
 
   const handleToggleCourseStatus = (id: string) => {
-    setCourses(courses.map(c => c.id === id ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c));
+    socket.emit('toggleCourseStatus', id);
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -134,7 +177,7 @@ export default function App() {
       employeeName: regEmployeeName,
       registrationDate: new Date().toISOString().split('T')[0]
     };
-    setRegistrations([...registrations, reg]);
+    socket.emit('addRegistration', reg);
     setRegEmployeeId('');
     setRegEmployeeName('');
     setSelectedCourseId('');
@@ -482,7 +525,10 @@ export default function App() {
       {/* Mobile Header */}
       <div className="md:hidden bg-emerald-800 text-white p-4 flex justify-between items-center shadow-md z-20 relative">
         <div>
-          <h1 className="text-xl font-bold tracking-wider">奇美食品</h1>
+          <h1 className="text-xl font-bold tracking-wider flex items-center">
+            奇美食品
+            {!isConnected && <span className="ml-2 w-2 h-2 rounded-full bg-red-400 animate-pulse" title="連線中..."></span>}
+          </h1>
           <p className="text-emerald-200 text-xs mt-1">教育訓練資訊平台</p>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 focus:outline-none hover:bg-emerald-700 rounded-md transition-colors">
@@ -493,7 +539,10 @@ export default function App() {
       {/* Sidebar */}
       <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-emerald-800 text-white shadow-md flex-shrink-0`}>
         <div className="p-6 hidden md:block">
-          <h1 className="text-2xl font-bold tracking-wider">奇美食品</h1>
+          <h1 className="text-2xl font-bold tracking-wider flex items-center">
+            奇美食品
+            {!isConnected && <span className="ml-2 w-2 h-2 rounded-full bg-red-400 animate-pulse" title="連線中..."></span>}
+          </h1>
           <p className="text-emerald-200 text-sm mt-1">教育訓練資訊平台</p>
         </div>
         <nav className="mt-0 md:mt-2">
