@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X, LogOut } from 'lucide-react';
+import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X } from 'lucide-react';
 import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from './firebase';
 
 type CourseCategory = '外部實體' | '外部線上' | '內部實體' | '內部數位學習平台';
@@ -91,19 +91,21 @@ export default function App() {
   const [records, setRecords] = useState<TrainingRecord[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsAuthReady(true);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthReady(true);
+      } else {
+        signInAnonymously(auth).catch(console.error);
+      }
     });
 
     return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthReady) return;
 
     setIsConnected(true);
 
@@ -134,7 +136,7 @@ export default function App() {
       unsubscribeRegistrations();
       unsubscribeRecords();
     };
-  }, [user]);
+  }, [isAuthReady]);
 
   // Form states for Add Course
   const [newCourse, setNewCourse] = useState<Partial<Course>>({
@@ -207,46 +209,6 @@ export default function App() {
     }
   };
 
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("登入失敗，請稍後再試。");
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await auth.signOut();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
-
-  if (!isAuthReady) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">載入中...</div>;
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-md text-center max-w-md w-full">
-          <BookOpen className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">企業教育訓練系統</h1>
-          <p className="text-gray-600 mb-6">請先登入以繼續使用系統</p>
-          <button
-            onClick={handleLogin}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
-          >
-            使用 Google 帳號登入
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const renderContent = () => {
     switch (activeTab) {
       case 'policy':
@@ -291,7 +253,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">選擇課程</label>
                   <select 
-                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}
                     required
@@ -306,7 +268,7 @@ export default function App() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">員工工號</label>
                   <input 
                     type="text" 
-                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                     value={regEmployeeId}
                     onChange={(e) => setRegEmployeeId(e.target.value)}
                     placeholder="例如: EMP001"
@@ -317,7 +279,7 @@ export default function App() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">員工姓名</label>
                   <input 
                     type="text" 
-                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                     value={regEmployeeName}
                     onChange={(e) => setRegEmployeeName(e.target.value)}
                     placeholder="例如: 王小明"
@@ -325,7 +287,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <button type="submit" className="w-full bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 transition-colors">
+                  <button type="submit" className="w-full bg-chimei-600 text-white py-2 px-4 rounded-md hover:bg-chimei-700 transition-colors">
                     送出報名
                   </button>
                 </div>
@@ -334,10 +296,10 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {courses.filter(c => c.status === 'active').map(course => (
-                <div key={course.id} className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-emerald-500">
+                <div key={course.id} className="bg-white p-6 rounded-lg shadow-sm border-l-4 border-chimei-500">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold text-gray-800">{course.name}</h3>
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full font-medium">
+                    <span className="px-2 py-1 bg-chimei-100 text-chimei-800 text-xs rounded-full font-medium">
                       {course.category}
                     </span>
                   </div>
@@ -364,7 +326,7 @@ export default function App() {
                         setSelectedCourseId(course.id);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="text-emerald-600 hover:text-emerald-800 font-medium text-sm flex items-center"
+                      className="text-chimei-600 hover:text-chimei-800 font-medium text-sm flex items-center"
                     >
                       <CheckCircle size={16} className="mr-1" /> 我要報名
                     </button>
@@ -442,7 +404,7 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">課程類別 <span className="text-red-500">*</span></label>
                     <select 
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.category}
                       onChange={(e) => setNewCourse({...newCourse, category: e.target.value as CourseCategory})}
                       required
@@ -457,7 +419,7 @@ export default function App() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">課程名稱 <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.name || ''}
                       onChange={(e) => setNewCourse({...newCourse, name: e.target.value})}
                       required
@@ -467,7 +429,7 @@ export default function App() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">開始日期 <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.startDate || ''}
                       onChange={(e) => setNewCourse({...newCourse, startDate: e.target.value})}
                       required
@@ -477,7 +439,7 @@ export default function App() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">結束日期 <span className="text-red-500">*</span></label>
                     <input 
                       type="date" 
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.endDate || ''}
                       onChange={(e) => setNewCourse({...newCourse, endDate: e.target.value})}
                       required
@@ -488,7 +450,7 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="例如: 14:00 - 16:00"
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.time || ''}
                       onChange={(e) => setNewCourse({...newCourse, time: e.target.value})}
                       required
@@ -499,7 +461,7 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="實體地點或線上平台名稱"
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.location || ''}
                       onChange={(e) => setNewCourse({...newCourse, location: e.target.value})}
                       required
@@ -510,7 +472,7 @@ export default function App() {
                     <input 
                       type="url" 
                       placeholder="https://"
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.link || ''}
                       onChange={(e) => setNewCourse({...newCourse, link: e.target.value})}
                     />
@@ -519,7 +481,7 @@ export default function App() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">課程說明 <span className="text-red-500">*</span></label>
                     <textarea 
                       rows={4}
-                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full border border-gray-300 rounded-md p-2 focus:ring-chimei-500 focus:border-chimei-500"
                       value={newCourse.description || ''}
                       onChange={(e) => setNewCourse({...newCourse, description: e.target.value})}
                       required
@@ -527,7 +489,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="flex justify-end pt-4">
-                  <button type="submit" className="bg-emerald-600 text-white py-2 px-6 rounded-md hover:bg-emerald-700 transition-colors flex items-center">
+                  <button type="submit" className="bg-chimei-600 text-white py-2 px-6 rounded-md hover:bg-chimei-700 transition-colors flex items-center">
                     <PlusCircle size={18} className="mr-2" /> 新增課程
                   </button>
                 </div>
@@ -561,7 +523,7 @@ export default function App() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button 
                             onClick={() => handleToggleCourseStatus(course.id)}
-                            className={`${course.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-emerald-600 hover:text-emerald-900'} flex items-center justify-end w-full`}
+                            className={`${course.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-chimei-600 hover:text-chimei-900'} flex items-center justify-end w-full`}
                           >
                             {course.status === 'active' ? (
                               <><XCircle size={16} className="mr-1" /> 下架</>
@@ -586,77 +548,65 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row font-sans">
       {/* Mobile Header */}
-      <div className="md:hidden bg-emerald-800 text-white p-4 flex justify-between items-center shadow-md z-20 relative">
+      <div className="md:hidden bg-chimei-500 text-white p-4 flex justify-between items-center shadow-md z-20 relative">
         <div>
           <h1 className="text-xl font-bold tracking-wider flex items-center">
             奇美食品
             {!isConnected && <span className="ml-2 w-2 h-2 rounded-full bg-red-400 animate-pulse" title="連線中..."></span>}
           </h1>
-          <p className="text-emerald-200 text-xs mt-1">教育訓練資訊平台</p>
+          <p className="text-chimei-200 text-xs mt-1">教育訓練資訊平台</p>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 focus:outline-none hover:bg-emerald-700 rounded-md transition-colors">
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 focus:outline-none hover:bg-chimei-600 rounded-md transition-colors">
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
       {/* Sidebar */}
-      <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-emerald-800 text-white shadow-md flex-shrink-0 relative pb-20`}>
+      <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-chimei-500 text-white shadow-md flex-shrink-0 relative pb-20`}>
         <div className="p-6 hidden md:block">
           <h1 className="text-2xl font-bold tracking-wider flex items-center">
             奇美食品
             {!isConnected && <span className="ml-2 w-2 h-2 rounded-full bg-red-400 animate-pulse" title="連線中..."></span>}
           </h1>
-          <p className="text-emerald-200 text-sm mt-1">教育訓練資訊平台</p>
+          <p className="text-chimei-200 text-sm mt-1">教育訓練資訊平台</p>
         </div>
         <nav className="mt-0 md:mt-2">
           <button 
             onClick={() => { setActiveTab('policy'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'policy' ? 'bg-emerald-900 border-l-4 border-emerald-400' : 'hover:bg-emerald-700 border-l-4 border-transparent'}`}
+            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'policy' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
           >
             <BookOpen size={20} className="mr-3" />
             訓練政策
           </button>
           <button 
             onClick={() => { setActiveTab('overview'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'overview' ? 'bg-emerald-900 border-l-4 border-emerald-400' : 'hover:bg-emerald-700 border-l-4 border-transparent'}`}
+            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'overview' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
           >
             <List size={20} className="mr-3" />
             課程總覽
           </button>
           <button 
             onClick={() => { setActiveTab('records'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'records' ? 'bg-emerald-900 border-l-4 border-emerald-400' : 'hover:bg-emerald-700 border-l-4 border-transparent'}`}
+            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'records' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
           >
             <History size={20} className="mr-3" />
             訓練紀錄查詢
           </button>
           <button 
             onClick={() => { setActiveTab('registrations'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'registrations' ? 'bg-emerald-900 border-l-4 border-emerald-400' : 'hover:bg-emerald-700 border-l-4 border-transparent'}`}
+            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'registrations' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
           >
             <ClipboardList size={20} className="mr-3" />
             報名清單查詢
           </button>
           <button 
             onClick={() => { setActiveTab('manage'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'manage' ? 'bg-emerald-900 border-l-4 border-emerald-400' : 'hover:bg-emerald-700 border-l-4 border-transparent'}`}
+            className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'manage' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
           >
             <PlusCircle size={20} className="mr-3" />
             新增/管理課程
           </button>
         </nav>
-        <div className="absolute bottom-0 w-full p-4 border-t border-emerald-700">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-sm text-emerald-200 truncate pr-2">{user?.displayName || '使用者'}</span>
-            <button 
-              onClick={handleLogout}
-              className="p-2 hover:bg-emerald-700 rounded-md transition-colors text-emerald-100 hover:text-white"
-              title="登出"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}

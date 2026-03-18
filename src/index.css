@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@theme {
+  --color-chimei-50: #fff4ed;
+  --color-chimei-100: #ffe6d5;
+  --color-chimei-200: #ffccaa;
+  --color-chimei-300: #ffab75;
+  --color-chimei-400: #ff833d;
+  --color-chimei-500: #f26522;
+  --color-chimei-600: #e24c12;
+  --color-chimei-700: #bc3811;
+  --color-chimei-800: #952d15;
+  --color-chimei-900: #782714;
+}
