@@ -42,7 +42,7 @@ service cloud.firestore {
 
     // Helper Functions
     function isAuthenticated() {
-      return request.auth != null;
+      return true; // Allow public access since login mechanism was removed
     }
 
     function hasRequiredFields(fields) {

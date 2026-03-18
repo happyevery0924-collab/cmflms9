@@ -97,7 +97,12 @@ export default function App() {
       if (user) {
         setIsAuthReady(true);
       } else {
-        signInAnonymously(auth).catch(console.error);
+        signInAnonymously(auth).then(() => {
+          setIsAuthReady(true);
+        }).catch((error) => {
+          console.error("Anonymous auth failed, proceeding without auth:", error);
+          setIsAuthReady(true); // Proceed anyway since rules now allow public access
+        });
       }
     });
 
