@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X } from 'lucide-react';
+import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X, Phone, Mail } from 'lucide-react';
 import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from './firebase';
@@ -585,7 +585,7 @@ export default function App() {
       </div>
 
       {/* Sidebar */}
-      <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-chimei-500 text-white shadow-md flex-shrink-0 relative pb-20`}>
+      <aside className={`${isMobileMenuOpen ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-64 bg-chimei-500 text-white shadow-md flex-shrink-0`}>
         <div className="p-6 hidden md:block">
           <h1 className="text-2xl font-bold tracking-wider flex items-center">
             奇美食品
@@ -593,7 +593,7 @@ export default function App() {
           </h1>
           <p className="text-chimei-200 text-sm mt-1">教育訓練資訊平台</p>
         </div>
-        <nav className="mt-0 md:mt-2">
+        <nav className="mt-0 md:mt-2 flex-1 overflow-y-auto">
           <button 
             onClick={() => { setActiveTab('policy'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center px-6 py-3 text-left transition-colors ${activeTab === 'policy' ? 'bg-chimei-600 border-l-4 border-white' : 'hover:bg-chimei-600 border-l-4 border-transparent'}`}
@@ -630,6 +630,21 @@ export default function App() {
             新增/管理課程
           </button>
         </nav>
+
+        <div className="p-6 bg-chimei-600 text-sm mt-auto">
+          <h3 className="font-semibold mb-2 flex items-center text-white">
+            <Phone size={16} className="mr-2" />
+            聯絡窗口
+          </h3>
+          <div className="text-chimei-100 space-y-1">
+            <p>人力資源部 邱淑玲</p>
+            <p>分機：12206</p>
+            <p className="break-all flex items-center mt-1">
+              <Mail size={14} className="mr-1 flex-shrink-0" />
+              <a href="mailto:linda-chiu@chimeifood.com.tw" className="hover:text-white transition-colors">linda-chiu@chimeifood.com.tw</a>
+            </p>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}
