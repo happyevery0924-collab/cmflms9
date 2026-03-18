@@ -1,0 +1,126 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: courses
+    // Document ID: auto-generated
+    // Fields:
+    //   - category: string (required, enum)
+    //   - name: string (required, < 100 chars)
+    //   - startDate: string (required, YYYY-MM-DD)
+    //   - endDate: string (required, YYYY-MM-DD)
+    //   - time: string (required, < 50 chars)
+    //   - location: string (required, < 100 chars)
+    //   - link: string (optional, < 500 chars)
+    //   - description: string (required, < 2000 chars)
+    //   - status: string (required, 'active' | 'inactive')
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: registrations
+    // Document ID: auto-generated
+    // Fields:
+    //   - courseId: string (required)
+    //   - employeeId: string (required, < 50 chars)
+    //   - employeeName: string (required, < 100 chars)
+    //   - registrationDate: string (required, YYYY-MM-DD)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: records
+    // Document ID: auto-generated
+    // Fields:
+    //   - courseName: string (required, < 100 chars)
+    //   - employeeId: string (required, < 50 chars)
+    //   - employeeName: string (required, < 100 chars)
+    //   - completionDate: string (required, YYYY-MM-DD)
+    //   - hours: number (required, > 0)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    function isPositive(field) {
+      return request.resource.data[field] is number && request.resource.data[field] > 0;
+    }
+
+    // Domain Validators
+    function isValidCourse() {
+      let data = request.resource.data;
+      return hasRequiredFields(['category', 'name', 'startDate', 'endDate', 'time', 'location', 'description', 'status', 'createdAt']) &&
+             data.category in ['外部實體', '外部線上', '內部實體', '內部數位學習平台'] &&
+             validStringLength('name', 1, 100) &&
+             validStringLength('startDate', 10, 10) &&
+             validStringLength('endDate', 10, 10) &&
+             validStringLength('time', 1, 50) &&
+             validStringLength('location', 1, 100) &&
+             isValidOptionalString('link', 0, 500) &&
+             validStringLength('description', 1, 2000) &&
+             data.status in ['active', 'inactive'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRegistration() {
+      let data = request.resource.data;
+      return hasRequiredFields(['courseId', 'employeeId', 'employeeName', 'registrationDate', 'createdAt']) &&
+             validStringLength('courseId', 1, 100) &&
+             validStringLength('employeeId', 1, 50) &&
+             validStringLength('employeeName', 1, 100) &&
+             validStringLength('registrationDate', 10, 10) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRecord() {
+      let data = request.resource.data;
+      return hasRequiredFields(['courseName', 'employeeId', 'employeeName', 'completionDate', 'hours']) &&
+             validStringLength('courseName', 1, 100) &&
+             validStringLength('employeeId', 1, 50) &&
+             validStringLength('employeeName', 1, 100) &&
+             validStringLength('completionDate', 10, 10) &&
+             isPositive('hours');
+    }
+
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCourse();
+      allow update: if isAuthenticated() && isValidCourse() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated(); // Allow delete for simplicity in this internal tool
+    }
+
+    match /registrations/{registrationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRegistration();
+      allow update: if isAuthenticated() && isValidRegistration() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated();
+    }
+
+    match /records/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidRecord();
+      allow update: if isAuthenticated() && isValidRecord();
+      allow delete: if isAuthenticated();
+    }
+  }
+}

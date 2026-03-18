@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X } from 'lucide-react';
-import { io } from 'socket.io-client';
-
-const socket = io();
+import { BookOpen, List, History, ClipboardList, PlusCircle, CheckCircle, XCircle, ExternalLink, Menu, X, LogOut } from 'lucide-react';
+import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
+import { db, auth } from './firebase';
 
 type CourseCategory = '外部實體' | '外部線上' | '內部實體' | '內部數位學習平台';
 
@@ -90,45 +90,51 @@ export default function App() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [records, setRecords] = useState<TrainingRecord[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    socket.on('connect', () => {
-      setIsConnected(true);
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
     });
 
-    socket.on('disconnect', () => {
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setIsConnected(true);
+
+    const unsubscribeCourses = onSnapshot(collection(db, 'courses'), (snapshot) => {
+      const coursesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+      setCourses(coursesData);
+    }, (error) => {
+      console.error("Error fetching courses:", error);
       setIsConnected(false);
     });
 
-    socket.on('initialState', (data) => {
-      setCourses(data.courses);
-      setRegistrations(data.registrations);
-      setRecords(data.records);
+    const unsubscribeRegistrations = onSnapshot(collection(db, 'registrations'), (snapshot) => {
+      const registrationsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Registration));
+      setRegistrations(registrationsData);
+    }, (error) => {
+      console.error("Error fetching registrations:", error);
     });
 
-    socket.on('courseAdded', (course: Course) => {
-      setCourses((prev) => [...prev, course]);
-    });
-
-    socket.on('courseStatusToggled', (courseId: string) => {
-      setCourses((prev) => prev.map(c => 
-        c.id === courseId ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c
-      ));
-    });
-
-    socket.on('registrationAdded', (registration: Registration) => {
-      setRegistrations((prev) => [...prev, registration]);
+    const unsubscribeRecords = onSnapshot(collection(db, 'records'), (snapshot) => {
+      const recordsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrainingRecord));
+      setRecords(recordsData);
+    }, (error) => {
+      console.error("Error fetching records:", error);
     });
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('initialState');
-      socket.off('courseAdded');
-      socket.off('courseStatusToggled');
-      socket.off('registrationAdded');
+      unsubscribeCourses();
+      unsubscribeRegistrations();
+      unsubscribeRecords();
     };
-  }, []);
+  }, [user]);
 
   // Form states for Add Course
   const [newCourse, setNewCourse] = useState<Partial<Course>>({
@@ -141,48 +147,105 @@ export default function App() {
   const [regEmployeeName, setRegEmployeeName] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
-  const handleAddCourse = (e: React.FormEvent) => {
+  const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    const course: Course = {
-      id: Date.now().toString(),
-      category: newCourse.category as CourseCategory,
-      name: newCourse.name || '',
-      startDate: newCourse.startDate || '',
-      endDate: newCourse.endDate || '',
-      time: newCourse.time || '',
-      location: newCourse.location || '',
-      link: newCourse.link,
-      description: newCourse.description || '',
-      status: 'active'
-    };
-    socket.emit('addCourse', course);
-    setNewCourse({ category: '內部實體', status: 'active' });
-    alert('課程新增成功！');
+    try {
+      await addDoc(collection(db, 'courses'), {
+        category: newCourse.category,
+        name: newCourse.name || '',
+        startDate: newCourse.startDate || '',
+        endDate: newCourse.endDate || '',
+        time: newCourse.time || '',
+        location: newCourse.location || '',
+        link: newCourse.link || '',
+        description: newCourse.description || '',
+        status: 'active',
+        createdAt: serverTimestamp()
+      });
+      setNewCourse({ category: '內部實體', status: 'active' });
+      alert('課程新增成功！');
+    } catch (error) {
+      console.error("Error adding course: ", error);
+      alert('課程新增失敗，請稍後再試。');
+    }
   };
 
-  const handleToggleCourseStatus = (id: string) => {
-    socket.emit('toggleCourseStatus', id);
+  const handleToggleCourseStatus = async (id: string) => {
+    const course = courses.find(c => c.id === id);
+    if (course) {
+      try {
+        await updateDoc(doc(db, 'courses', id), {
+          status: course.status === 'active' ? 'inactive' : 'active'
+        });
+      } catch (error) {
+        console.error("Error updating course status: ", error);
+      }
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCourseId || !regEmployeeId || !regEmployeeName) {
       alert('請填寫完整報名資訊');
       return;
     }
-    const reg: Registration = {
-      id: Date.now().toString(),
-      courseId: selectedCourseId,
-      employeeId: regEmployeeId,
-      employeeName: regEmployeeName,
-      registrationDate: new Date().toISOString().split('T')[0]
-    };
-    socket.emit('addRegistration', reg);
-    setRegEmployeeId('');
-    setRegEmployeeName('');
-    setSelectedCourseId('');
-    alert('報名成功！');
+    try {
+      await addDoc(collection(db, 'registrations'), {
+        courseId: selectedCourseId,
+        employeeId: regEmployeeId,
+        employeeName: regEmployeeName,
+        registrationDate: new Date().toISOString().split('T')[0],
+        createdAt: serverTimestamp()
+      });
+      setRegEmployeeId('');
+      setRegEmployeeName('');
+      setSelectedCourseId('');
+      alert('報名成功！');
+    } catch (error) {
+      console.error("Error registering: ", error);
+      alert('報名失敗，請稍後再試。');
+    }
   };
+
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert("登入失敗，請稍後再試。");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  if (!isAuthReady) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">載入中...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-md text-center max-w-md w-full">
+          <BookOpen className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">企業教育訓練系統</h1>
+          <p className="text-gray-600 mb-6">請先登入以繼續使用系統</p>
+          <button
+            onClick={handleLogin}
+            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            使用 Google 帳號登入
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -537,7 +600,7 @@ export default function App() {
       </div>
 
       {/* Sidebar */}
-      <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-emerald-800 text-white shadow-md flex-shrink-0`}>
+      <aside className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:block w-full md:w-64 bg-emerald-800 text-white shadow-md flex-shrink-0 relative pb-20`}>
         <div className="p-6 hidden md:block">
           <h1 className="text-2xl font-bold tracking-wider flex items-center">
             奇美食品
@@ -582,6 +645,18 @@ export default function App() {
             新增/管理課程
           </button>
         </nav>
+        <div className="absolute bottom-0 w-full p-4 border-t border-emerald-700">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-sm text-emerald-200 truncate pr-2">{user?.displayName || '使用者'}</span>
+            <button 
+              onClick={handleLogout}
+              className="p-2 hover:bg-emerald-700 rounded-md transition-colors text-emerald-100 hover:text-white"
+              title="登出"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
       </aside>
 
       {/* Main Content */}

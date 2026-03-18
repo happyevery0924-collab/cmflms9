@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "Course": {
+      "title": "Course",
+      "description": "A training course offered by the company.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["外部實體", "外部線上", "內部實體", "內部數位學習平台"],
+          "description": "The category of the course."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the course."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The start date of the course (YYYY-MM-DD)."
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The end date of the course (YYYY-MM-DD)."
+        },
+        "time": {
+          "type": "string",
+          "description": "The time of the course (e.g., 14:00 - 16:00)."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the course."
+        },
+        "link": {
+          "type": "string",
+          "description": "The online link for the course (optional)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the course."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"],
+          "description": "The status of the course."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the course was created."
+        }
+      },
+      "required": ["category", "name", "startDate", "endDate", "time", "location", "description", "status"]
+    },
+    "Registration": {
+      "title": "Registration",
+      "description": "A registration for a training course.",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "description": "The ID of the course."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "The ID of the employee registering."
+        },
+        "employeeName": {
+          "type": "string",
+          "description": "The name of the employee registering."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date of registration (YYYY-MM-DD)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the registration was created."
+        }
+      },
+      "required": ["courseId", "employeeId", "employeeName", "registrationDate"]
+    },
+    "TrainingRecord": {
+      "title": "TrainingRecord",
+      "description": "A record of completed training.",
+      "type": "object",
+      "properties": {
+        "courseName": {
+          "type": "string",
+          "description": "The name of the completed course."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "The ID of the employee."
+        },
+        "employeeName": {
+          "type": "string",
+          "description": "The name of the employee."
+        },
+        "completionDate": {
+          "type": "string",
+          "description": "The date the training was completed (YYYY-MM-DD)."
+        },
+        "hours": {
+          "type": "number",
+          "description": "The number of training hours completed."
+        }
+      },
+      "required": ["courseName", "employeeId", "employeeName", "completionDate", "hours"]
+    }
+  },
+  "firestore": {
+    "courses": {
+      "schema": {
+        "$ref": "#/entities/Course"
+      },
+      "description": "Collection of all training courses."
+    },
+    "registrations": {
+      "schema": {
+        "$ref": "#/entities/Registration"
+      },
+      "description": "Collection of all course registrations."
+    },
+    "records": {
+      "schema": {
+        "$ref": "#/entities/TrainingRecord"
+      },
+      "description": "Collection of all training records."
+    }
+  }
+}
